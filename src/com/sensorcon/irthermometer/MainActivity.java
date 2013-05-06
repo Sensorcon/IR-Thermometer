@@ -9,20 +9,26 @@ import com.sensorcon.sensordrone.Drone;
 import com.sensorcon.sensordrone.Drone.DroneEventListener;
 import com.sensorcon.sensordrone.Drone.DroneStatusListener;
 import android.os.Bundle;
+import android.os.Handler;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.View.OnClickListener;
+import android.widget.CompoundButton;
 
 public class MainActivity extends Activity {
 	
@@ -30,13 +36,30 @@ public class MainActivity extends Activity {
 	private ImageView lightRed;
 	private ImageView lightBlue;
 	private ImageView lightOff;
-	private ImageButton buttonPressed;
-	private ImageButton buttonReleased;
-	private TextView valueRef;
+	private ImageButton setRefReleasedLarge;
+	private ImageButton setRefPressedLarge;
+	private TextView tv_valueRef;
 	private TextView labelRef;
 	private TextView labelUnit;
 	private TextView labelScan;
-	private TextView valueIr;
+	private TextView tv_valueIr;
+	private RadioGroup radioGroupRef;
+	private RadioButton radioButtonOff;
+	private RadioButton radioButton2f;
+	private RadioButton radioButton10f;
+	private RadioButton radioButton20f;
+	private RadioButton radioButtonF;
+	private RadioButton radioButtonC;
+	
+	private float valueRef;
+	private float valueIr;
+	private float reference;
+	private boolean checkRef;
+	private boolean showRef;
+	private boolean celcius;
+	
+	private Handler displayIrHandler = new Handler();
+	private Handler displayRefHandler = new Handler();
 	
 	private Typeface lcdFont;
 
@@ -55,31 +78,39 @@ public class MainActivity extends Activity {
 		lightRed = (ImageView)findViewById(R.id.light_red);
 		lightBlue = (ImageView)findViewById(R.id.light_blue);
 		lightOff = (ImageView)findViewById(R.id.light_off);
-		buttonReleased = (ImageButton)findViewById(R.id.button_released);
-		buttonPressed = (ImageButton)findViewById(R.id.button_pressed);
-		valueRef = (TextView)findViewById(R.id.value_ref);
-		valueIr = (TextView)findViewById(R.id.value_ir);
+		setRefReleasedLarge = (ImageButton)findViewById(R.id.set_ref_released_large);
+		setRefPressedLarge = (ImageButton)findViewById(R.id.set_ref_pressed_large);
+		tv_valueRef = (TextView)findViewById(R.id.value_ref);
+		tv_valueIr = (TextView)findViewById(R.id.value_ir);
 		labelRef = (TextView)findViewById(R.id.label_ref);
 		labelUnit = (TextView)findViewById(R.id.label_unit);
 		labelScan = (TextView)findViewById(R.id.label_scan);
+		radioGroupRef = (RadioGroup)findViewById(R.id.radio_group_ref);
 		
 		labelUnit.setText("F" + (char) 0x00B0 );
+		
+		valueIr = 0;
+		valueRef = 0;
+		reference = 9999;
+		checkRef = false;
+		showRef = false;
+		celcius = false;
 		
 		lightGreen.setVisibility(View.GONE);
 		lightBlue.setVisibility(View.GONE);
 		lightRed.setVisibility(View.GONE);
-		valueRef.setVisibility(View.GONE);
-		valueIr.setVisibility(View.GONE);
+		tv_valueRef.setVisibility(View.GONE);
+		tv_valueIr.setVisibility(View.GONE);
 		labelRef.setVisibility(View.GONE);
 		labelUnit.setVisibility(View.GONE);
 		labelScan.setVisibility(View.GONE);
-		buttonPressed.setVisibility(View.GONE);
+		setRefPressedLarge.setVisibility(View.GONE);
 		
 		on = false;
 		
 		lcdFont = Typeface.createFromAsset(this.getAssets(), "DS-DIGI.TTF");	
-		valueRef.setTypeface(lcdFont);
-		valueIr.setTypeface(lcdFont);
+		tv_valueRef.setTypeface(lcdFont);
+		tv_valueIr.setTypeface(lcdFont);
 		labelRef.setTypeface(lcdFont);
 		labelUnit.setTypeface(lcdFont);
 		labelScan.setTypeface(lcdFont);
@@ -87,14 +118,14 @@ public class MainActivity extends Activity {
 		/*
 		 * Controls the program flow for when the left button is pressed/released
 		 */
-		buttonReleased.setOnTouchListener(new OnTouchListener() {
+		setRefReleasedLarge.setOnTouchListener(new OnTouchListener() {
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
 				/*
 				 * If button is pressed down
 				 */
 				if(event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-					buttonPressed();
+					refButtonLargePressed();
 				}
 				/*
 				 * If button is released
@@ -112,7 +143,28 @@ public class MainActivity extends Activity {
 		myHelper = new SDHelper();
 	}
 	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
 
+		if (isFinishing()) {
+			// Try and nicely shut down
+			doOnDisconnect();
+			// A brief delay
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			// Unregister the listener
+			myDrone.unregisterDroneEventListener(box.droneEventListener);
+			myDrone.unregisterDroneStatusListener(box.droneStatusListener);
+
+		} else { 
+			//It's an orientation change.
+		}
+	}
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
@@ -126,53 +178,49 @@ public class MainActivity extends Activity {
 		case R.id.connect:
 			scan();
 			break;
+		case R.id.disconnect:
+			doOnDisconnect();
+			break;
+		case R.id.advanced_mode:
+			break;
+		case R.id.directions:
+			break;
 		}
 			
 		return true;
 	}
 	
-	public void buttonPressed() {
+	public void refButtonLargePressed() {
 		if(!on) {
-			on = true;
+			setRefReleasedLarge.setVisibility(View.GONE);
+			setRefPressedLarge.setVisibility(View.VISIBLE);
 			
-			valueRef.setVisibility(View.VISIBLE);
-			valueIr.setVisibility(View.VISIBLE);
-			labelRef.setVisibility(View.VISIBLE);
-			labelUnit.setVisibility(View.VISIBLE);
-			labelScan.setVisibility(View.VISIBLE);
-			
-			buttonReleased.setVisibility(View.GONE);
-			buttonPressed.setVisibility(View.VISIBLE);
-			
-			lightGreen.setVisibility(View.VISIBLE);
-			lightOff.setVisibility(View.GONE);
-			
-			valueRef.setText("122.3");
-			valueIr.setText("122.3");
+			if(myDrone.isConnected) {
+				on = true;
+				
+				lightGreen.setVisibility(View.VISIBLE);
+				lightOff.setVisibility(View.GONE);
+				
+				checkRef = true;
+				setRef();
+			}
 		}
 		else {
 			on = false;
 			
-			valueRef.setVisibility(View.GONE);
-			valueIr.setVisibility(View.GONE);
-			labelRef.setVisibility(View.GONE);
-			labelUnit.setVisibility(View.GONE);
-			labelScan.setVisibility(View.GONE);
-			
-			buttonReleased.setVisibility(View.GONE);
-			buttonPressed.setVisibility(View.VISIBLE);
+			setRefReleasedLarge.setVisibility(View.GONE);
+			setRefPressedLarge.setVisibility(View.VISIBLE);
 			
 			lightGreen.setVisibility(View.GONE);
 			lightOff.setVisibility(View.VISIBLE);
 			
-			valueRef.setText("122.3");
-			valueIr.setText("122.3");
+			checkRef = false;
 		}
 	}
 	
 	public void buttonReleased() {
-		buttonReleased.setVisibility(View.VISIBLE);
-		buttonPressed.setVisibility(View.GONE);
+		setRefReleasedLarge.setVisibility(View.VISIBLE);
+		setRefPressedLarge.setVisibility(View.GONE);
 	}
 	
 	/**
@@ -192,6 +240,12 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void run() {
+				tv_valueRef.setVisibility(View.GONE);
+				tv_valueIr.setVisibility(View.GONE);
+				labelRef.setVisibility(View.GONE);
+				labelUnit.setVisibility(View.GONE);
+				labelScan.setVisibility(View.GONE);
+				
 				// Turn off myBlinker
 				box.myBlinker.disable();
 				
@@ -226,6 +280,116 @@ public class MainActivity extends Activity {
 		});
 	}
 
+	public void setRef() {
+		valueRef = valueIr;
+		showRef = true;
+		displayRefHandler.post(displayRefRunnable);
+	}
+	
+	public void onRadioButtonClicked(View view) {
+		
+		boolean checked = ((RadioButton)view).isChecked();
+		
+		switch(view.getId()) {
+		case R.id.radio_button_off:
+			if(checked) {
+				reference = 9999;
+			}
+			break;
+		case R.id.radio_button_2f:
+			if(checked) {
+				reference = 2;
+			}
+			break;
+		case R.id.radio_button_10f:
+			if(checked) {
+				reference = 10;
+			}
+			break;
+		case R.id.radio_button_20f:
+			if(checked) {
+				reference = 20;
+			}
+			break;
+		case R.id.radio_button_F:
+			if(checked) {
+				celcius = false;
+			}
+			break;
+		case R.id.radio_button_C:
+			if(checked) {
+				celcius = true;
+			}
+			break;
+		}
+		
+	}
+	
+	public Runnable displayIRRunnable = new Runnable() {
+
+		@Override
+		public void run() {
+			if(myDrone.isConnected) {
+				tv_valueIr.setText(String.format("%.1f", valueIr));
+				
+				if(celcius) {
+					labelUnit.setText("C" + (char) 0x00B0);
+				} else {
+					labelUnit.setText("F" + (char) 0x00B0);
+				}
+				
+				displayIrHandler.postDelayed(this, 1000);
+			}
+			else {
+				displayIrHandler.removeCallbacksAndMessages(null);
+			}
+		}
+	};
+	
+	public Runnable displayRefRunnable = new Runnable() {
+
+		@Override
+		public void run() {
+			if(myDrone.isConnected) {
+				
+				if(showRef) {
+					tv_valueRef.setText(String.format("%.1f", valueIr));
+					showRef = false;
+				}
+				
+				Log.d("chris", "Value: " + Float.toString(valueIr));
+				Log.d("chris", "Ref value: " + Float.toString(valueRef));
+				Log.d("chris", "Reference: " + Float.toString(reference));
+				
+				if(checkRef) {
+					if((valueIr + reference) < valueRef) {
+						lightGreen.setVisibility(View.GONE);
+						lightBlue.setVisibility(View.VISIBLE);
+						lightRed.setVisibility(View.GONE);
+					}
+					else if((valueIr - reference) > valueRef) {
+						lightGreen.setVisibility(View.GONE);
+						lightBlue.setVisibility(View.GONE);
+						lightRed.setVisibility(View.VISIBLE);
+					}
+					else {
+						lightGreen.setVisibility(View.VISIBLE);
+						lightBlue.setVisibility(View.GONE);
+						lightRed.setVisibility(View.GONE);
+					}
+				}
+				else {
+					displayRefHandler.removeCallbacksAndMessages(null);
+				}
+				
+				displayRefHandler.postDelayed(this, 1000);
+			}
+			else {
+				
+			}
+		}
+	};
+	
 	/*
 	 * Because Android will destroy and re-create things on events like orientation changes,
 	 * we will need a way to store our objects and return them in such a case. 
@@ -261,7 +425,7 @@ public class MainActivity extends Activity {
 		public Storage(Context context) {
 			
 			// Initialize sensor
-			sensor = myDrone.QS_TYPE_PRECISION_GAS;
+			sensor = myDrone.QS_TYPE_IR_TEMPERATURE;
 			
 			// This will Blink our Drone, once a second, Blue
 			myBlinker = new ConnectionBlinker(myDrone, 1000, 0, 255, 0);
@@ -289,6 +453,14 @@ public class MainActivity extends Activity {
 					// Turn on our blinker
 					myBlinker.enable();
 					myBlinker.run();
+					
+					tv_valueRef.setVisibility(View.VISIBLE);
+					tv_valueIr.setVisibility(View.VISIBLE);
+					labelRef.setVisibility(View.VISIBLE);
+					labelUnit.setVisibility(View.VISIBLE);
+					labelScan.setVisibility(View.VISIBLE);
+					
+					displayIrHandler.post(displayIRRunnable);
 				}
 
 				
@@ -296,20 +468,45 @@ public class MainActivity extends Activity {
 				public void connectionLostEvent(EventObject arg0) {
 					// Turn off the blinker
 					myBlinker.disable();
+					
+					quickMessage("Connection lost! Trying to re-connect!");
+
+					// Try to reconnect once, automatically
+					if (myDrone.btConnect(myDrone.lastMAC)) {
+						// A brief pause
+						try {
+							Thread.sleep(500);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+						
+					} else {
+						quickMessage("Re-connect failed");
+						doOnDisconnect();
+					}
 				}
 
 				@Override
 				public void disconnectEvent(EventObject arg0) {
-					// If drone is disconnected, "power down" the inspector
-					doOnDisconnect();
+					quickMessage("Disconnected!");
 				}
 
 				@Override
-				public void precisionGasMeasured(EventObject arg0) {}
-
+				public void irTemperatureMeasured(EventObject arg0) {
+					if(celcius) {
+						valueIr = myDrone.irTemperature_Celcius;
+					} else {
+						valueIr = myDrone.irTemperature_Farenheit;
+					}
+					
+					streamer.streamHandler.postDelayed(streamer, 250);
+				}
+				
 				/*
 				 * Unused events
 				 */
+				@Override
+				public void precisionGasMeasured(EventObject arg0) {}
 				@Override
 				public void customEvent(EventObject arg0) {}
 				@Override
@@ -322,8 +519,6 @@ public class MainActivity extends Activity {
 				public void humidityMeasured(EventObject arg0) {}
 				@Override
 				public void i2cRead(EventObject arg0) {}
-				@Override
-				public void irTemperatureMeasured(EventObject arg0) {}
 				@Override
 				public void oxidizingGasMeasured(EventObject arg0) {}
 				@Override
@@ -350,11 +545,15 @@ public class MainActivity extends Activity {
 			droneStatusListener = new DroneStatusListener() {
 
 				@Override
-				public void precisionGasStatus(EventObject arg0) {}
+				public void irStatus(EventObject arg0) {
+					streamer.run();
+				}
 				
 				/*
 				 * Unused statuses
 				 */
+				@Override
+				public void precisionGasStatus(EventObject arg0) {}
 				@Override
 				public void adcStatus(EventObject arg0) {}
 				@Override
@@ -369,8 +568,6 @@ public class MainActivity extends Activity {
 				public void customStatus(EventObject arg0) {}
 				@Override
 				public void humidityStatus(EventObject arg0) {}
-				@Override
-				public void irStatus(EventObject arg0) {}
 				@Override
 				public void lowBatteryStatus(EventObject arg0) {}
 				@Override

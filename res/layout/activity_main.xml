@@ -88,6 +88,17 @@
         android:text="SCAN"
         android:textColor="#FF0000"
         android:textSize="30dp" />
+    
+     <TextView
+        android:id="@+id/label_max"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/label_scan"
+        android:layout_alignTop="@+id/label_scan"
+        android:layout_marginLeft="30dp"
+        android:text="MAX"
+        android:textColor="#FF0000"
+        android:textSize="30dp" />
 
     <TextView
         android:id="@+id/label_unit"
@@ -120,7 +131,7 @@
 	    android:orientation="vertical"
 	    android:layout_below="@+id/directions"
 	    android:layout_marginTop="20dp"
-	    android:layout_marginLeft="390dp" >
+	    android:layout_marginLeft="415dp" >
 	    
 	   <RadioButton
 	        android:id="@+id/radio_button_off"
@@ -157,7 +168,7 @@
         android:layout_height="wrap_content"
          android:layout_below="@+id/directions"
 	    android:layout_marginTop="20dp"
-	    android:layout_marginLeft="335dp"
+	    android:layout_marginLeft="360dp"
         android:text="Off -"
         android:textColor="#FFFFFF"
         android:textSize="25dp" />
@@ -234,7 +245,7 @@
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/lcdScreen"
         android:layout_alignTop="@+id/lcdScreen"
-        android:layout_marginLeft="125dp"
+        android:layout_marginLeft="150dp"
         android:layout_marginTop="340dp"
         android:src="@drawable/directions" />
 
@@ -259,16 +270,82 @@
         android:layout_marginTop="102dp"
         android:background="@null"
         android:src="@drawable/set_ref_pressed_large" />
+    
+     <ImageButton
+        android:id="@+id/set_ref_released_small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+         android:layout_alignLeft="@+id/lcdScreen"
+        android:layout_below="@+id/lcdScreen"
+        android:layout_marginLeft="-130dp"
+        android:layout_marginTop="50dp"
+        android:background="@null"
+        android:src="@drawable/set_ref_released_small" />
+     
+     <ImageButton
+        android:id="@+id/set_ref_pressed_small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/lcdScreen"
+        android:layout_below="@+id/lcdScreen"
+        android:layout_marginLeft="-128dp"
+        android:layout_marginTop="52dp"
+        android:background="@null"
+        android:src="@drawable/set_ref_pressed_small" />
+     
+      <ImageButton
+        android:id="@+id/input_ref_released"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/lcdScreen"
+        android:layout_below="@+id/lcdScreen"
+        android:layout_marginLeft="-130dp"
+        android:layout_marginTop="175dp"
+        android:background="@null"
+        android:src="@drawable/input_ref_released" />
+      
+      <ImageButton
+        android:id="@+id/input_ref_pressed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/lcdScreen"
+        android:layout_below="@+id/lcdScreen"
+        android:layout_marginLeft="-128dp"
+        android:layout_marginTop="177dp"
+        android:background="@null"
+        android:src="@drawable/input_ref_pressed" />
+      
+      <ImageButton
+        android:id="@+id/max_hold_released"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/lcdScreen"
+        android:layout_below="@+id/lcdScreen"
+        android:layout_marginRight="-130dp"
+        android:layout_marginTop="50dp"
+        android:background="@null"
+        android:src="@drawable/max_hold_released" />
+      
+      <ImageButton
+        android:id="@+id/max_hold_pressed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/lcdScreen"
+        android:layout_below="@+id/lcdScreen"
+        android:layout_marginRight="-132dp"
+        android:layout_marginTop="52dp"
+        android:background="@null"
+        android:src="@drawable/max_hold_pressed" />
 
     <RadioGroup 
 	    android:id="@+id/radio_group_units"
 	    android:layout_width="wrap_content"
 	    android:layout_height="wrap_content"
 	    android:orientation="horizontal"
-	    android:layout_below="@+id/lcdScreen"
-	    android:layout_centerHorizontal="true"
-	    android:layout_marginTop="350dp" >
-	    
+	    android:layout_alignLeft="@+id/lcdScreen"
+	    android:layout_marginTop="725dp" 
+	    android:layout_marginLeft="-65dp">
+	   
 	    <RadioButton
 	        android:id="@+id/radio_button_F"
 	        android:layout_width="wrap_content"

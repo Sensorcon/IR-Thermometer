@@ -11,24 +11,31 @@ import com.sensorcon.sensordrone.Drone.DroneStatusListener;
 import android.os.Bundle;
 import android.os.Handler;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.View.OnClickListener;
 import android.widget.CompoundButton;
+import android.view.ViewGroup.MarginLayoutParams;
 
 public class MainActivity extends Activity {
 	
@@ -38,11 +45,20 @@ public class MainActivity extends Activity {
 	private ImageView lightOff;
 	private ImageButton setRefReleasedLarge;
 	private ImageButton setRefPressedLarge;
+	private ImageButton setRefReleasedSmall;
+	private ImageButton setRefPressedSmall;
+	private ImageButton inputRefReleased;
+	private ImageButton inputRefPressed;
+	private ImageButton maxHoldReleased;
+	private ImageButton maxHoldPressed;
+	private ImageView iv_directions;
 	private TextView tv_valueRef;
 	private TextView labelRef;
 	private TextView labelUnit;
 	private TextView labelScan;
+	private TextView labelMax;
 	private TextView tv_valueIr;
+	private RadioGroup radioGroupUnits;
 	private RadioGroup radioGroupRef;
 	private RadioButton radioButtonOff;
 	private RadioButton radioButton2f;
@@ -54,12 +70,20 @@ public class MainActivity extends Activity {
 	private float valueRef;
 	private float valueIr;
 	private float reference;
+	private float max;
 	private boolean checkRef;
 	private boolean showRef;
 	private boolean celcius;
+	private boolean maxHold;
+	
+	private int mode;
+	private boolean modeChange;
+	private final int NORMAL_MODE = 0;
+	private final int ADVANCED_MODE = 1;
 	
 	private Handler displayIrHandler = new Handler();
 	private Handler displayRefHandler = new Handler();
+	private Handler modeHandler = new Handler();
 	
 	private Typeface lcdFont;
 
@@ -68,6 +92,7 @@ public class MainActivity extends Activity {
 	public SDHelper myHelper;
 	
 	private boolean on;
+	private boolean maxHoldOn;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -80,14 +105,26 @@ public class MainActivity extends Activity {
 		lightOff = (ImageView)findViewById(R.id.light_off);
 		setRefReleasedLarge = (ImageButton)findViewById(R.id.set_ref_released_large);
 		setRefPressedLarge = (ImageButton)findViewById(R.id.set_ref_pressed_large);
+		setRefReleasedSmall = (ImageButton)findViewById(R.id.set_ref_released_small);
+		setRefPressedSmall = (ImageButton)findViewById(R.id.set_ref_pressed_small);
+		inputRefReleased = (ImageButton)findViewById(R.id.input_ref_released);
+		inputRefPressed = (ImageButton)findViewById(R.id.input_ref_pressed);
+		maxHoldReleased = (ImageButton)findViewById(R.id.max_hold_released);
+		maxHoldPressed = (ImageButton)findViewById(R.id.max_hold_pressed);
+		iv_directions = (ImageView)findViewById(R.id.directions);
 		tv_valueRef = (TextView)findViewById(R.id.value_ref);
 		tv_valueIr = (TextView)findViewById(R.id.value_ir);
 		labelRef = (TextView)findViewById(R.id.label_ref);
 		labelUnit = (TextView)findViewById(R.id.label_unit);
 		labelScan = (TextView)findViewById(R.id.label_scan);
+		labelMax = (TextView)findViewById(R.id.label_max);
 		radioGroupRef = (RadioGroup)findViewById(R.id.radio_group_ref);
+		radioGroupUnits = (RadioGroup)findViewById(R.id.radio_group_units);
 		
 		labelUnit.setText("F" + (char) 0x00B0 );
+		
+		mode = NORMAL_MODE;
+		modeChange = false;
 		
 		valueIr = 0;
 		valueRef = 0;
@@ -104,9 +141,17 @@ public class MainActivity extends Activity {
 		labelRef.setVisibility(View.GONE);
 		labelUnit.setVisibility(View.GONE);
 		labelScan.setVisibility(View.GONE);
+		labelMax.setVisibility(View.GONE);
 		setRefPressedLarge.setVisibility(View.GONE);
+		setRefPressedSmall.setVisibility(View.GONE);
+		setRefReleasedSmall.setVisibility(View.GONE);
+		inputRefPressed.setVisibility(View.GONE);
+		inputRefReleased.setVisibility(View.GONE);
+		maxHoldReleased.setVisibility(View.GONE);
+		maxHoldPressed.setVisibility(View.GONE);
 		
 		on = false;
+		maxHoldOn = false;
 		
 		lcdFont = Typeface.createFromAsset(this.getAssets(), "DS-DIGI.TTF");	
 		tv_valueRef.setTypeface(lcdFont);
@@ -114,6 +159,7 @@ public class MainActivity extends Activity {
 		labelRef.setTypeface(lcdFont);
 		labelUnit.setTypeface(lcdFont);
 		labelScan.setTypeface(lcdFont);
+		labelMax.setTypeface(lcdFont);
 		
 		/*
 		 * Controls the program flow for when the left button is pressed/released
@@ -131,7 +177,64 @@ public class MainActivity extends Activity {
 				 * If button is released
 				 */
 				else if(event.getAction() == android.view.MotionEvent.ACTION_UP) {
-					buttonReleased();
+					refButtonLargeReleased();
+				}
+				return true;
+			}
+		});
+		
+		setRefReleasedSmall.setOnTouchListener(new OnTouchListener() {
+			@Override
+			public boolean onTouch(View v, MotionEvent event) {
+				/*
+				 * If button is pressed down
+				 */
+				if(event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+					refButtonSmallPressed();
+				}
+				/*
+				 * If button is released
+				 */
+				else if(event.getAction() == android.view.MotionEvent.ACTION_UP) {
+					refButtonSmallReleased();
+				}
+				return true;
+			}
+		});
+		
+		inputRefReleased.setOnTouchListener(new OnTouchListener() {
+			@Override
+			public boolean onTouch(View v, MotionEvent event) {
+				/*
+				 * If button is pressed down
+				 */
+				if(event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+					inputRefButtonPressed();
+				}
+				/*
+				 * If button is released
+				 */
+				else if(event.getAction() == android.view.MotionEvent.ACTION_UP) {
+					inputRefButtonReleased();
+				}
+				return true;
+			}
+		});
+		
+		maxHoldReleased.setOnTouchListener(new OnTouchListener() {
+			@Override
+			public boolean onTouch(View v, MotionEvent event) {
+				/*
+				 * If button is pressed down
+				 */
+				if(event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+					maxHoldButtonPressed();
+				}
+				/*
+				 * If button is released
+				 */
+				else if(event.getAction() == android.view.MotionEvent.ACTION_UP) {
+					maxHoldButtonReleased();
 				}
 				return true;
 			}
@@ -181,7 +284,15 @@ public class MainActivity extends Activity {
 		case R.id.disconnect:
 			doOnDisconnect();
 			break;
+		case R.id.normal_mode:
+			modeChange = true;
+			mode = NORMAL_MODE;
+			modeHandler.post(changeModeRunnable);
+			break;
 		case R.id.advanced_mode:
+			modeChange = true;
+			mode = ADVANCED_MODE;
+			modeHandler.post(changeModeRunnable);
 			break;
 		case R.id.directions:
 			break;
@@ -218,9 +329,82 @@ public class MainActivity extends Activity {
 		}
 	}
 	
-	public void buttonReleased() {
+	public void refButtonLargeReleased() {
 		setRefReleasedLarge.setVisibility(View.VISIBLE);
 		setRefPressedLarge.setVisibility(View.GONE);
+	}
+	
+	public void refButtonSmallPressed() {
+		if(!on) {
+			setRefReleasedSmall.setVisibility(View.GONE);
+			setRefPressedSmall.setVisibility(View.VISIBLE);
+			
+			if(myDrone.isConnected) {
+				on = true;
+				
+				lightGreen.setVisibility(View.VISIBLE);
+				lightOff.setVisibility(View.GONE);
+				
+				checkRef = true;
+				setRef();
+			}
+		}
+		else {
+			on = false;
+			
+			setRefReleasedSmall.setVisibility(View.GONE);
+			setRefPressedSmall.setVisibility(View.VISIBLE);
+			
+			lightGreen.setVisibility(View.GONE);
+			lightOff.setVisibility(View.VISIBLE);
+			
+			checkRef = false;
+		}
+	}
+	
+	public void refButtonSmallReleased() {
+		setRefReleasedSmall.setVisibility(View.VISIBLE);
+		setRefPressedSmall.setVisibility(View.GONE);
+	}
+	
+	public void inputRefButtonPressed() {
+		inputRefReleased.setVisibility(View.GONE);
+		inputRefPressed.setVisibility(View.VISIBLE);
+		
+		if(myDrone.isConnected) {
+			on = true;
+			getInputVal();
+			
+			lightGreen.setVisibility(View.VISIBLE);
+			lightOff.setVisibility(View.GONE);
+		}
+	}
+	
+	public void inputRefButtonReleased() {
+		inputRefReleased.setVisibility(View.VISIBLE);
+		inputRefPressed.setVisibility(View.GONE);
+	}
+	
+	public void maxHoldButtonPressed() {
+		maxHoldReleased.setVisibility(View.GONE);
+		maxHoldPressed.setVisibility(View.VISIBLE);
+		
+		if(myDrone.isConnected) {
+			if(!maxHold) {
+				maxHold = true;
+				labelMax.setVisibility(View.VISIBLE);
+			}
+			else {
+				maxHold = false;
+				labelMax.setVisibility(View.GONE);
+				max = 0;
+			}
+		}
+	}
+	
+	public void maxHoldButtonReleased() {
+		maxHoldReleased.setVisibility(View.VISIBLE);
+		maxHoldPressed.setVisibility(View.GONE);
 	}
 	
 	/**
@@ -240,11 +424,23 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void run() {
+				
+				displayRefHandler.removeCallbacksAndMessages(null);
+				displayIrHandler.removeCallbacksAndMessages(null);
+				
 				tv_valueRef.setVisibility(View.GONE);
 				tv_valueIr.setVisibility(View.GONE);
 				labelRef.setVisibility(View.GONE);
 				labelUnit.setVisibility(View.GONE);
 				labelScan.setVisibility(View.GONE);
+				
+				valueIr = 0;
+				valueRef = 0;
+				
+				lightGreen.setVisibility(View.GONE);
+				lightBlue.setVisibility(View.GONE);
+				lightRed.setVisibility(View.GONE);
+				lightOff.setVisibility(View.VISIBLE);
 				
 				// Turn off myBlinker
 				box.myBlinker.disable();
@@ -280,10 +476,51 @@ public class MainActivity extends Activity {
 		});
 	}
 
+	public void getInputVal() {
+		LayoutInflater li = LayoutInflater.from(this);
+		View promptView = li.inflate(R.layout.prompt, null);
+		
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+
+		// set prompts.xml to alertdialog builder
+		alertDialogBuilder.setView(promptView);
+
+		final EditText userInput = (EditText) promptView.findViewById(R.id.editTextDialogUserInput);
+
+		// set dialog message
+		alertDialogBuilder.setCancelable(false).setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			    public void onClick(DialogInterface dialog,int id) {
+			    	valueRef = Float.valueOf(userInput.getText().toString());
+			    	showRef = true;
+			    	checkRef = true;
+					displayRefHandler.post(displayRefRunnable);
+			    }
+			  })
+			.setNegativeButton("Cancel",
+			  new DialogInterface.OnClickListener() {
+			    public void onClick(DialogInterface dialog,int id) {
+				dialog.cancel();
+			    }
+			  });
+
+		// create alert dialog
+		AlertDialog alertDialog = alertDialogBuilder.create();
+
+		// show it
+		alertDialog.show();
+	}
+	
 	public void setRef() {
 		valueRef = valueIr;
 		showRef = true;
 		displayRefHandler.post(displayRefRunnable);
+	}
+	
+	public int pxToDp(int px) {
+	
+		float d = this.getResources().getDisplayMetrics().density;
+		int ret = (int)(px * d); // margin in pixels
+		return ret;
 	}
 	
 	public void onRadioButtonClicked(View view) {
@@ -314,11 +551,13 @@ public class MainActivity extends Activity {
 		case R.id.radio_button_F:
 			if(checked) {
 				celcius = false;
+				max = 0;
 			}
 			break;
 		case R.id.radio_button_C:
 			if(checked) {
 				celcius = true;
+				max = 0;
 			}
 			break;
 		}
@@ -330,7 +569,12 @@ public class MainActivity extends Activity {
 		@Override
 		public void run() {
 			if(myDrone.isConnected) {
-				tv_valueIr.setText(String.format("%.1f", valueIr));
+				if(maxHold) {
+					tv_valueIr.setText(String.format("%.1f", max));
+				}
+				else {
+					tv_valueIr.setText(String.format("%.1f", valueIr));
+				}
 				
 				if(celcius) {
 					labelUnit.setText("C" + (char) 0x00B0);
@@ -353,7 +597,7 @@ public class MainActivity extends Activity {
 			if(myDrone.isConnected) {
 				
 				if(showRef) {
-					tv_valueRef.setText(String.format("%.1f", valueIr));
+					tv_valueRef.setText(String.format("%.1f", valueRef));
 					showRef = false;
 				}
 				
@@ -386,6 +630,47 @@ public class MainActivity extends Activity {
 			}
 			else {
 				
+			}
+		}
+	};
+	
+	public Runnable changeModeRunnable = new Runnable() {
+
+		@Override
+		public void run() {
+			
+			if(modeChange == true) {
+				if(mode == NORMAL_MODE) {
+					setRefReleasedLarge.setVisibility(View.VISIBLE);
+					setRefPressedLarge.setVisibility(View.GONE);
+					setRefPressedSmall.setVisibility(View.GONE);
+					setRefReleasedSmall.setVisibility(View.GONE);
+					inputRefPressed.setVisibility(View.GONE);
+					inputRefReleased.setVisibility(View.GONE);
+					maxHoldReleased.setVisibility(View.GONE);
+					maxHoldPressed.setVisibility(View.GONE);
+					
+					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)iv_directions.getLayoutParams();
+					params.setMargins(pxToDp(150), pxToDp(340), 0, 0); //substitute parameters for left, top, right, bottom
+					iv_directions.setLayoutParams(params);
+					
+					maxHold = false;
+				}
+				else {
+					setRefReleasedLarge.setVisibility(View.GONE);
+					setRefPressedLarge.setVisibility(View.GONE);
+					setRefPressedSmall.setVisibility(View.GONE);
+					setRefReleasedSmall.setVisibility(View.VISIBLE);
+					inputRefPressed.setVisibility(View.GONE);
+					inputRefReleased.setVisibility(View.VISIBLE);
+					maxHoldReleased.setVisibility(View.VISIBLE);
+					maxHoldPressed.setVisibility(View.GONE);
+					
+					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)iv_directions.getLayoutParams();
+					params.setMargins(pxToDp(150), pxToDp(450), 0, 0); //substitute parameters for left, top, right, bottom
+					iv_directions.setLayoutParams(params);
+				}
+				modeChange = false;
 			}
 		}
 	};
@@ -497,6 +782,10 @@ public class MainActivity extends Activity {
 						valueIr = myDrone.irTemperature_Celcius;
 					} else {
 						valueIr = myDrone.irTemperature_Farenheit;
+					}
+					
+					if(valueIr > max) {
+						max = valueIr;
 					}
 					
 					streamer.streamHandler.postDelayed(streamer, 250);

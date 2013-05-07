@@ -2,6 +2,7 @@
 
     <item android:id="@+id/connect" android:title="Connect"></item>
     <item android:id="@+id/disconnect" android:title="Disconnect"></item>
+    <item android:id="@+id/normal_mode" android:title="Normal Mode"></item>
     <item android:id="@+id/advanced_mode" android:title="Advanced Mode"></item>
     <item android:id="@+id/instructions" android:title="Instructions"></item>
 

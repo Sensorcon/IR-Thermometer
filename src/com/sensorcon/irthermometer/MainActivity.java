@@ -10,6 +10,7 @@ import com.sensorcon.sensordrone.Drone.DroneEventListener;
 import com.sensorcon.sensordrone.Drone.DroneStatusListener;
 import android.os.Bundle;
 import android.os.Handler;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -31,12 +32,15 @@ import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 import android.view.View.OnClickListener;
 import android.widget.CompoundButton;
 import android.view.ViewGroup.MarginLayoutParams;
 
+@SuppressLint("NewApi")
 public class MainActivity extends Activity {
 	
 	private ImageView lightGreen;
@@ -52,6 +56,7 @@ public class MainActivity extends Activity {
 	private ImageButton maxHoldReleased;
 	private ImageButton maxHoldPressed;
 	private ImageView iv_directions;
+	private RelativeLayout refLayout;
 	private TextView tv_valueRef;
 	private TextView labelRef;
 	private TextView labelUnit;
@@ -66,6 +71,11 @@ public class MainActivity extends Activity {
 	private RadioButton radioButton20f;
 	private RadioButton radioButtonF;
 	private RadioButton radioButtonC;
+	private RadioButton rbNorm;
+	private RadioButton rbAdv;
+	
+	private RadioGroup radioGroupMode;
+	private ToggleButton toggleMode;
 	
 	private float valueRef;
 	private float valueIr;
@@ -75,6 +85,13 @@ public class MainActivity extends Activity {
 	private boolean showRef;
 	private boolean celcius;
 	private boolean maxHold;
+	private boolean rEnabled;
+	private boolean gEnabled;
+	private boolean bEnabled;
+	
+	private int api;
+	private final int NEW_API = 0;
+	private final int OLD_API = 1;
 	
 	private int mode;
 	private boolean modeChange;
@@ -99,6 +116,13 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
+		// Check to see if API supports swipe views and fragments
+		if (android.os.Build.VERSION.SDK_INT < 14) {
+		    api = OLD_API;
+		} else {
+			api = NEW_API;
+		}
+		
 		lightGreen = (ImageView)findViewById(R.id.light_green);
 		lightRed = (ImageView)findViewById(R.id.light_red);
 		lightBlue = (ImageView)findViewById(R.id.light_blue);
@@ -120,11 +144,19 @@ public class MainActivity extends Activity {
 		labelMax = (TextView)findViewById(R.id.label_max);
 		radioGroupRef = (RadioGroup)findViewById(R.id.radio_group_ref);
 		radioGroupUnits = (RadioGroup)findViewById(R.id.radio_group_units);
+		refLayout = (RelativeLayout)findViewById(R.id.ref_layout);
+		
+		if(api == NEW_API) {
+			toggleMode = (ToggleButton)findViewById(R.id.toggle_mode);
+		}
 		
 		labelUnit.setText("F" + (char) 0x00B0 );
 		
 		mode = NORMAL_MODE;
 		modeChange = false;
+		rEnabled = false;
+		gEnabled = false;
+		bEnabled = false;
 		
 		valueIr = 0;
 		valueRef = 0;
@@ -133,22 +165,22 @@ public class MainActivity extends Activity {
 		showRef = false;
 		celcius = false;
 		
-		lightGreen.setVisibility(View.GONE);
-		lightBlue.setVisibility(View.GONE);
-		lightRed.setVisibility(View.GONE);
-		tv_valueRef.setVisibility(View.GONE);
-		tv_valueIr.setVisibility(View.GONE);
-		labelRef.setVisibility(View.GONE);
-		labelUnit.setVisibility(View.GONE);
-		labelScan.setVisibility(View.GONE);
-		labelMax.setVisibility(View.GONE);
-		setRefPressedLarge.setVisibility(View.GONE);
-		setRefPressedSmall.setVisibility(View.GONE);
-		setRefReleasedSmall.setVisibility(View.GONE);
-		inputRefPressed.setVisibility(View.GONE);
-		inputRefReleased.setVisibility(View.GONE);
-		maxHoldReleased.setVisibility(View.GONE);
-		maxHoldPressed.setVisibility(View.GONE);
+		lightGreen.setVisibility(View.INVISIBLE);
+		lightBlue.setVisibility(View.INVISIBLE);
+		lightRed.setVisibility(View.INVISIBLE);
+		tv_valueRef.setVisibility(View.INVISIBLE);
+		tv_valueIr.setVisibility(View.INVISIBLE);
+		labelRef.setVisibility(View.INVISIBLE);
+		labelUnit.setVisibility(View.INVISIBLE);
+		labelScan.setVisibility(View.INVISIBLE);
+		labelMax.setVisibility(View.INVISIBLE);
+		setRefPressedLarge.setVisibility(View.INVISIBLE);
+		setRefPressedSmall.setVisibility(View.INVISIBLE);
+		setRefReleasedSmall.setVisibility(View.INVISIBLE);
+		inputRefPressed.setVisibility(View.INVISIBLE);
+		inputRefReleased.setVisibility(View.INVISIBLE);
+		maxHoldReleased.setVisibility(View.INVISIBLE);
+		maxHoldPressed.setVisibility(View.INVISIBLE);
 		
 		on = false;
 		maxHoldOn = false;
@@ -302,91 +334,71 @@ public class MainActivity extends Activity {
 	}
 	
 	public void refButtonLargePressed() {
+		setRefReleasedLarge.setVisibility(View.INVISIBLE);
+		setRefPressedLarge.setVisibility(View.VISIBLE);
+		
 		if(!on) {
-			setRefReleasedLarge.setVisibility(View.GONE);
-			setRefPressedLarge.setVisibility(View.VISIBLE);
-			
 			if(myDrone.isConnected) {
 				on = true;
 				
 				lightGreen.setVisibility(View.VISIBLE);
-				lightOff.setVisibility(View.GONE);
+				lightOff.setVisibility(View.INVISIBLE);
 				
 				checkRef = true;
 				setRef();
 			}
 		}
 		else {
-			on = false;
-			
-			setRefReleasedLarge.setVisibility(View.GONE);
-			setRefPressedLarge.setVisibility(View.VISIBLE);
-			
-			lightGreen.setVisibility(View.GONE);
-			lightOff.setVisibility(View.VISIBLE);
-			
-			checkRef = false;
+			setRef();
 		}
 	}
 	
 	public void refButtonLargeReleased() {
 		setRefReleasedLarge.setVisibility(View.VISIBLE);
-		setRefPressedLarge.setVisibility(View.GONE);
+		setRefPressedLarge.setVisibility(View.INVISIBLE);
 	}
 	
 	public void refButtonSmallPressed() {
+		setRefReleasedSmall.setVisibility(View.INVISIBLE);
+		setRefPressedSmall.setVisibility(View.VISIBLE);
+		
 		if(!on) {
-			setRefReleasedSmall.setVisibility(View.GONE);
-			setRefPressedSmall.setVisibility(View.VISIBLE);
-			
 			if(myDrone.isConnected) {
 				on = true;
 				
 				lightGreen.setVisibility(View.VISIBLE);
-				lightOff.setVisibility(View.GONE);
+				lightOff.setVisibility(View.INVISIBLE);
 				
 				checkRef = true;
 				setRef();
 			}
 		}
 		else {
-			on = false;
-			
-			setRefReleasedSmall.setVisibility(View.GONE);
-			setRefPressedSmall.setVisibility(View.VISIBLE);
-			
-			lightGreen.setVisibility(View.GONE);
-			lightOff.setVisibility(View.VISIBLE);
-			
-			checkRef = false;
+			setRef();
 		}
 	}
 	
 	public void refButtonSmallReleased() {
 		setRefReleasedSmall.setVisibility(View.VISIBLE);
-		setRefPressedSmall.setVisibility(View.GONE);
+		setRefPressedSmall.setVisibility(View.INVISIBLE);
 	}
 	
 	public void inputRefButtonPressed() {
-		inputRefReleased.setVisibility(View.GONE);
+		inputRefReleased.setVisibility(View.INVISIBLE);
 		inputRefPressed.setVisibility(View.VISIBLE);
 		
 		if(myDrone.isConnected) {
-			on = true;
 			getInputVal();
-			
-			lightGreen.setVisibility(View.VISIBLE);
-			lightOff.setVisibility(View.GONE);
 		}
 	}
 	
 	public void inputRefButtonReleased() {
 		inputRefReleased.setVisibility(View.VISIBLE);
-		inputRefPressed.setVisibility(View.GONE);
+		inputRefPressed.setVisibility(View.INVISIBLE);
 	}
 	
 	public void maxHoldButtonPressed() {
-		maxHoldReleased.setVisibility(View.GONE);
+		maxHoldReleased.setVisibility(View.INVISIBLE);
 		maxHoldPressed.setVisibility(View.VISIBLE);
 		
 		if(myDrone.isConnected) {
@@ -396,7 +408,7 @@ public class MainActivity extends Activity {
 			}
 			else {
 				maxHold = false;
-				labelMax.setVisibility(View.GONE);
+				labelMax.setVisibility(View.INVISIBLE);
 				max = 0;
 			}
 		}
@@ -404,7 +416,7 @@ public class MainActivity extends Activity {
 	
 	public void maxHoldButtonReleased() {
 		maxHoldReleased.setVisibility(View.VISIBLE);
-		maxHoldPressed.setVisibility(View.GONE);
+		maxHoldPressed.setVisibility(View.INVISIBLE);
 	}
 	
 	/**
@@ -428,22 +440,24 @@ public class MainActivity extends Activity {
 				displayRefHandler.removeCallbacksAndMessages(null);
 				displayIrHandler.removeCallbacksAndMessages(null);
 				
-				tv_valueRef.setVisibility(View.GONE);
-				tv_valueIr.setVisibility(View.GONE);
-				labelRef.setVisibility(View.GONE);
-				labelUnit.setVisibility(View.GONE);
-				labelScan.setVisibility(View.GONE);
+				tv_valueRef.setVisibility(View.INVISIBLE);
+				tv_valueIr.setVisibility(View.INVISIBLE);
+				labelRef.setVisibility(View.INVISIBLE);
+				labelUnit.setVisibility(View.INVISIBLE);
+				labelScan.setVisibility(View.INVISIBLE);
 				
 				valueIr = 0;
 				valueRef = 0;
 				
-				lightGreen.setVisibility(View.GONE);
-				lightBlue.setVisibility(View.GONE);
-				lightRed.setVisibility(View.GONE);
+				lightGreen.setVisibility(View.INVISIBLE);
+				lightBlue.setVisibility(View.INVISIBLE);
+				lightRed.setVisibility(View.INVISIBLE);
 				lightOff.setVisibility(View.VISIBLE);
 				
 				// Turn off myBlinker
-				box.myBlinker.disable();
+				box.myBlinkerR.disable();
+				box.myBlinkerG.disable();
+				box.myBlinkerB.disable();
 				
 				// Make sure the LEDs go off
 				if (myDrone.isConnected) {
@@ -477,6 +491,7 @@ public class MainActivity extends Activity {
 	}
 
 	public void getInputVal() {
+		
 		LayoutInflater li = LayoutInflater.from(this);
 		View promptView = li.inflate(R.layout.prompt, null);
 		
@@ -484,22 +499,45 @@ public class MainActivity extends Activity {
 
 		// set prompts.xml to alertdialog builder
 		alertDialogBuilder.setView(promptView);
+		
+		TextView tv = (TextView)promptView.findViewById(R.id.promptMessage);
+		
+		if(celcius) {
+			tv.setText("Enter Reference Value (C): ");
+		}
+		else {
+			tv.setText("Enter Reference Value (F): ");
+		}
 
 		final EditText userInput = (EditText) promptView.findViewById(R.id.editTextDialogUserInput);
 
 		// set dialog message
 		alertDialogBuilder.setCancelable(false).setPositiveButton("OK", new DialogInterface.OnClickListener() {
 			    public void onClick(DialogInterface dialog,int id) {
-			    	valueRef = Float.valueOf(userInput.getText().toString());
-			    	showRef = true;
-			    	checkRef = true;
-					displayRefHandler.post(displayRefRunnable);
+			    	if(userInput.getText().toString().length() == 0 ) {
+			    	}
+			    	else {
+			    		if(!on) {
+			    			if(myDrone.isConnected) {
+			    				on = true;
+			    				
+			    				lightGreen.setVisibility(View.VISIBLE);
+			    				lightOff.setVisibility(View.INVISIBLE);
+			    				
+			    				checkRef = true;
+			    			}
+			    		}
+			    		
+			    		valueRef = Float.valueOf(userInput.getText().toString());
+				    	showRef = true;
+						displayRefHandler.post(displayRefRunnable);
+			    	}
 			    }
 			  })
 			.setNegativeButton("Cancel",
 			  new DialogInterface.OnClickListener() {
 			    public void onClick(DialogInterface dialog,int id) {
-				dialog.cancel();
+			    	dialog.cancel();
 			    }
 			  });
 
@@ -521,6 +559,14 @@ public class MainActivity extends Activity {
 		float d = this.getResources().getDisplayMetrics().density;
 		int ret = (int)(px * d); // margin in pixels
 		return ret;
+	}
+	
+	public void refToF() {
+		valueRef = (float)(valueRef*1.8) + 32;
+	}
+	
+	public void refToC() {
+		valueRef = (valueRef - 32)*(float)(0.555555556);
 	}
 	
 	public void onRadioButtonClicked(View view) {
@@ -550,18 +596,42 @@ public class MainActivity extends Activity {
 			break;
 		case R.id.radio_button_F:
 			if(checked) {
+				if(celcius) {
+					refToF();
+					showRef = true;
+				}
+				
 				celcius = false;
 				max = 0;
 			}
 			break;
 		case R.id.radio_button_C:
 			if(checked) {
+				if(!celcius) {
+					refToC();
+					showRef = true;
+				}
+				
 				celcius = true;
 				max = 0;
 			}
 			break;
 		}
+	}
+	
+	public void onToggleClicked(View view) {
 		
+		    boolean on = ((ToggleButton)view).isChecked();
+			
+		    if(on) {
+		    	modeChange = true;
+				mode = ADVANCED_MODE;
+				modeHandler.post(changeModeRunnable);
+		    } else {
+		    	 modeChange = true;
+				mode = NORMAL_MODE;
+				modeHandler.post(changeModeRunnable);
+		    }
 	}
 	
 	public Runnable displayIRRunnable = new Runnable() {
@@ -607,19 +677,52 @@ public class MainActivity extends Activity {
 				
 				if(checkRef) {
 					if((valueIr + reference) < valueRef) {
-						lightGreen.setVisibility(View.GONE);
+						lightGreen.setVisibility(View.INVISIBLE);
 						lightBlue.setVisibility(View.VISIBLE);
-						lightRed.setVisibility(View.GONE);
+						lightRed.setVisibility(View.INVISIBLE);
+						
+						if(bEnabled == false) {
+							bEnabled = true;
+							rEnabled = false;
+							gEnabled = false;
+							
+							box.myBlinkerR.disable();
+							box.myBlinkerG.disable();
+							box.myBlinkerB.enable();
+							box.myBlinkerB.run();
+						}
 					}
 					else if((valueIr - reference) > valueRef) {
-						lightGreen.setVisibility(View.GONE);
-						lightBlue.setVisibility(View.GONE);
+						lightGreen.setVisibility(View.INVISIBLE);
+						lightBlue.setVisibility(View.INVISIBLE);
 						lightRed.setVisibility(View.VISIBLE);
+						
+						if(rEnabled == false) {
+							rEnabled = true;
+							bEnabled = false;
+							gEnabled = false;
+							
+							box.myBlinkerB.disable();
+							box.myBlinkerG.disable();
+							box.myBlinkerR.enable();
+							box.myBlinkerR.run();
+						}
 					}
 					else {
 						lightGreen.setVisibility(View.VISIBLE);
-						lightBlue.setVisibility(View.GONE);
-						lightRed.setVisibility(View.GONE);
+						lightBlue.setVisibility(View.INVISIBLE);
+						lightRed.setVisibility(View.INVISIBLE);
+						
+						if(gEnabled == false) {
+							gEnabled = true;
+							bEnabled = false;
+							rEnabled = false;
+							
+							box.myBlinkerR.disable();
+							box.myBlinkerB.disable();
+							box.myBlinkerG.enable();
+							box.myBlinkerG.run();
+						}
 					}
 				}
 				else {
@@ -642,33 +745,42 @@ public class MainActivity extends Activity {
 			if(modeChange == true) {
 				if(mode == NORMAL_MODE) {
 					setRefReleasedLarge.setVisibility(View.VISIBLE);
-					setRefPressedLarge.setVisibility(View.GONE);
-					setRefPressedSmall.setVisibility(View.GONE);
-					setRefReleasedSmall.setVisibility(View.GONE);
-					inputRefPressed.setVisibility(View.GONE);
-					inputRefReleased.setVisibility(View.GONE);
-					maxHoldReleased.setVisibility(View.GONE);
-					maxHoldPressed.setVisibility(View.GONE);
+					setRefPressedLarge.setVisibility(View.INVISIBLE);
+					setRefPressedSmall.setVisibility(View.INVISIBLE);
+					setRefReleasedSmall.setVisibility(View.INVISIBLE);
+					inputRefPressed.setVisibility(View.INVISIBLE);
+					inputRefReleased.setVisibility(View.INVISIBLE);
+					maxHoldReleased.setVisibility(View.INVISIBLE);
+					maxHoldPressed.setVisibility(View.INVISIBLE);
 					
-					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)iv_directions.getLayoutParams();
-					params.setMargins(pxToDp(150), pxToDp(340), 0, 0); //substitute parameters for left, top, right, bottom
-					iv_directions.setLayoutParams(params);
+//					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)iv_directions.getLayoutParams();
+//					params.setMargins(pxToDp(150), pxToDp(340), 0, 0); //substitute parameters for left, top, right, bottom
+//					iv_directions.setLayoutParams(params);
+					
+					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)refLayout.getLayoutParams();
+					params.setMargins(pxToDp(1), pxToDp(0), 0, 0); //substitute parameters for left, top, right, bottom
+					params.removeRule(RelativeLayout.BELOW);
+					params.addRule(RelativeLayout.ALIGN_TOP, R.id.set_ref_released_large);
+					refLayout.setLayoutParams(params);
 					
 					maxHold = false;
 				}
 				else {
-					setRefReleasedLarge.setVisibility(View.GONE);
-					setRefPressedLarge.setVisibility(View.GONE);
-					setRefPressedSmall.setVisibility(View.GONE);
+					setRefReleasedLarge.setVisibility(View.INVISIBLE);
+					setRefPressedLarge.setVisibility(View.INVISIBLE);
+					setRefPressedSmall.setVisibility(View.INVISIBLE);
 					setRefReleasedSmall.setVisibility(View.VISIBLE);
-					inputRefPressed.setVisibility(View.GONE);
+					inputRefPressed.setVisibility(View.INVISIBLE);
 					inputRefReleased.setVisibility(View.VISIBLE);
 					maxHoldReleased.setVisibility(View.VISIBLE);
-					maxHoldPressed.setVisibility(View.GONE);
+					maxHoldPressed.setVisibility(View.INVISIBLE);
 					
-					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)iv_directions.getLayoutParams();
-					params.setMargins(pxToDp(150), pxToDp(450), 0, 0); //substitute parameters for left, top, right, bottom
-					iv_directions.setLayoutParams(params);
+					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)refLayout.getLayoutParams();
+					params.removeRule(RelativeLayout.ALIGN_TOP);
+					params.addRule(RelativeLayout.BELOW, R.id.max_hold_released);
+					params.setMargins(pxToDp(1), pxToDp(10), 0, 0);
+					refLayout.setLayoutParams(params);
+					
 				}
 				modeChange = false;
 			}
@@ -689,7 +801,9 @@ public class MainActivity extends Activity {
 	public final class Storage {
 		
 		// A ConnectionBLinker from the SDHelper Library
-		public ConnectionBlinker myBlinker;
+		public ConnectionBlinker myBlinkerR;
+		public ConnectionBlinker myBlinkerG;
+		public ConnectionBlinker myBlinkerB;
 		
 		// Holds the sensor of interest - the CO precision sensor
 		public int sensor;
@@ -713,7 +827,9 @@ public class MainActivity extends Activity {
 			sensor = myDrone.QS_TYPE_IR_TEMPERATURE;
 			
 			// This will Blink our Drone, once a second, Blue
-			myBlinker = new ConnectionBlinker(myDrone, 1000, 0, 255, 0);
+			myBlinkerR = new ConnectionBlinker(myDrone, 1000, 255, 0, 0);
+			myBlinkerG = new ConnectionBlinker(myDrone, 1000, 0, 255, 0);
+			myBlinkerB = new ConnectionBlinker(myDrone, 1000, 0, 0, 255);
 			
 			streamer = new SDStreamer(myDrone, sensor);
 			
@@ -736,8 +852,8 @@ public class MainActivity extends Activity {
 					// Flash teh LEDs green
 					myHelper.flashLEDs(myDrone, 3, 100, 0, 0, 22);
 					// Turn on our blinker
-					myBlinker.enable();
-					myBlinker.run();
+					myBlinkerG.enable();
+					myBlinkerG.run();
 					
 					tv_valueRef.setVisibility(View.VISIBLE);
 					tv_valueIr.setVisibility(View.VISIBLE);
@@ -752,7 +868,9 @@ public class MainActivity extends Activity {
 				@Override
 				public void connectionLostEvent(EventObject arg0) {
 					// Turn off the blinker
-					myBlinker.disable();
+					myBlinkerR.disable();
+					myBlinkerG.disable();
+					myBlinkerB.disable();
 					
 					quickMessage("Connection lost! Trying to re-connect!");
 

@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
+    android:background="#232323"
     android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
@@ -124,131 +124,7 @@
         android:textColor="#FF0000"
         android:textSize="120dp" />
     
-	<RadioGroup 
-	    android:id="@+id/radio_group_ref"
-	    android:layout_width="wrap_content"
-	    android:layout_height="wrap_content"
-	    android:orientation="vertical"
-	    android:layout_below="@+id/directions"
-	    android:layout_marginTop="20dp"
-	    android:layout_marginLeft="415dp" >
-	    
-	   <RadioButton
-	        android:id="@+id/radio_button_off"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content" 
-	        android:onClick="onRadioButtonClicked"
-	        android:checked="true" />
-	   
-	     <RadioButton
-	        android:id="@+id/radio_button_2f"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        android:onClick="onRadioButtonClicked"
-	        android:layout_marginTop="10dp" />
-	
-	    <RadioButton
-	        android:id="@+id/radio_button_10f"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        android:onClick="onRadioButtonClicked"
-	        android:layout_marginTop="10dp" />
-	
-	    <RadioButton
-	        android:id="@+id/radio_button_20f"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        android:onClick="onRadioButtonClicked"
-	        android:layout_marginTop="10dp" />
-	</RadioGroup>
-	
-    <TextView
-        android:id="@+id/label_off"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-         android:layout_below="@+id/directions"
-	    android:layout_marginTop="20dp"
-	    android:layout_marginLeft="360dp"
-        android:text="Off -"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-    
-    <TextView
-        android:id="@+id/label_2f"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/label_off"
-        android:layout_alignTop="@+id/label_off"
-        android:layout_marginTop="42dp"
-        android:text="2°F -"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <TextView
-        android:id="@+id/label_10f"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-       android:layout_alignRight="@+id/label_2f"
-        android:layout_alignTop="@+id/label_2f"
-        android:layout_marginTop="42dp"
-        android:text="10°F -"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <TextView
-        android:id="@+id/label_20f"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/label_10f"
-        android:layout_alignTop="@+id/label_10f"
-        android:layout_marginTop="42dp"
-        android:text="20°F -"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <TextView
-        android:id="@+id/label_1c"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/label_2f"
-        android:layout_alignTop="@+id/label_2f"
-        android:layout_marginLeft="95dp"
-        android:text="- 1°C"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <TextView
-        android:id="@+id/label_5c"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/label_1c"
-        android:layout_alignTop="@+id/label_1c"
-        android:layout_marginTop="42dp"
-        android:text="- 5°C"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <TextView
-        android:id="@+id/label_10c"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/label_5c"
-        android:layout_alignTop="@+id/label_5c"
-        android:layout_marginTop="42dp"
-        android:text="- 10°C"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <ImageView
-        android:id="@+id/directions"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/lcdScreen"
-        android:layout_alignTop="@+id/lcdScreen"
-        android:layout_marginLeft="150dp"
-        android:layout_marginTop="340dp"
-        android:src="@drawable/directions" />
-
+     
     <ImageButton
         android:id="@+id/set_ref_released_large"
         android:layout_width="wrap_content"
@@ -256,7 +132,7 @@
         android:layout_alignLeft="@+id/lcdScreen"
         android:layout_below="@+id/lcdScreen"
         android:layout_marginLeft="-130dp"
-        android:layout_marginTop="100dp"
+        android:layout_marginTop="75dp"
         android:background="@null"
         android:src="@drawable/set_ref_released_large" />
 
@@ -267,7 +143,7 @@
         android:layout_alignLeft="@+id/lcdScreen"
         android:layout_below="@+id/lcdScreen"
         android:layout_marginLeft="-128dp"
-        android:layout_marginTop="102dp"
+        android:layout_marginTop="77dp"
         android:background="@null"
         android:src="@drawable/set_ref_pressed_large" />
     
@@ -337,53 +213,144 @@
         android:background="@null"
         android:src="@drawable/max_hold_pressed" />
 
-    <RadioGroup 
-	    android:id="@+id/radio_group_units"
+      <RelativeLayout 
+          android:id="@+id/mode_layout"
 	    android:layout_width="wrap_content"
 	    android:layout_height="wrap_content"
-	    android:orientation="horizontal"
-	    android:layout_alignLeft="@+id/lcdScreen"
-	    android:layout_marginTop="725dp" 
-	    android:layout_marginLeft="-65dp">
-	   
-	    <RadioButton
-	        android:id="@+id/radio_button_F"
+	     android:layout_alignRight="@+id/lcdScreen"
+	    android:layout_below="@+id/lcdScreen"
+	    android:layout_marginRight="200dp"
+	     android:layout_marginTop="300dp"
+	    android:padding="15dp"
+	    android:background="@drawable/border" >
+	    
+          <TextView
+			     android:id="@+id/label_mode"
+			     android:layout_width="wrap_content"
+			     android:layout_height="wrap_content"
+			     android:textColor="#FFFFFF"
+			     android:text="Adv. Mode" />
+          
+          <ToggleButton
+			     android:id="@+id/toggle_mode"
+			     android:layout_width="wrap_content"
+			     android:layout_height="wrap_content"
+			     android:layout_below="@+id/label_mode"
+			     android:layout_marginTop="2dp"
+			     android:onClick="onToggleClicked" />
+          
+           <TextView
+		        android:id="@+id/label_F"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		     	android:layout_toRightOf="@+id/label_mode"
+		        android:layout_marginLeft="30dp"
+		        android:text="F"
+		        android:textColor="#FFFFFF"
+		        android:textSize="25dp" />
+		
+		    <TextView
+		        android:id="@+id/label_C"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:layout_alignBottom="@+id/label_F"
+		        android:layout_toRightOf="@+id/label_F"
+		        android:layout_marginLeft="28dp"
+		        android:text="C"
+		        android:textColor="#FFFFFF"
+		        android:textSize="25dp" />
+			 
+		    <RadioGroup 
+			    android:id="@+id/radio_group_units"
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:orientation="horizontal"
+			    android:layout_alignLeft="@+id/label_F"
+			    android:layout_below="@+id/label_F"
+			    android:layout_marginLeft="-10dp" >
+			   
+			    <RadioButton
+			        android:id="@+id/radio_button_F"
+			        android:layout_width="wrap_content"
+			        android:layout_height="wrap_content"
+			        android:textColor="#FFFFFF"
+			        android:onClick="onRadioButtonClicked"
+			        android:checked="true" />
+			
+			    <RadioButton
+			        android:id="@+id/radio_button_C"
+			        android:layout_width="wrap_content"
+			        android:layout_height="wrap_content" 
+			        android:layout_marginLeft= "10dp"
+			        android:onClick="onRadioButtonClicked" />
+			</RadioGroup>
+	 
+	 	</RelativeLayout>
+       
+       <!-- Reference layout -->
+       
+       <RelativeLayout 
+           android:id="@+id/ref_layout"
+	    	android:layout_width="wrap_content"
+	    	android:layout_height="wrap_content"
+	    	android:layout_alignLeft="@+id/max_hold_released"
+	    	android:layout_alignTop="@+id/set_ref_released_large"
+		     android:padding="15dp"
+		     android:layout_marginLeft="1dp"
+		    android:background="@drawable/border" >
+	    
+         <ImageView
+	        android:id="@+id/directions"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
-	        android:textColor="#FFFFFF"
-	        android:onClick="onRadioButtonClicked"
-	        android:checked="true" />
-	
-	    <RadioButton
-	        android:id="@+id/radio_button_C"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content" 
-	        android:layout_marginLeft= "10dp"
-	        android:onClick="onRadioButtonClicked" />
-	</RadioGroup>
-	
-    <TextView
-        android:id="@+id/label_F"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/radio_group_units"
-        android:layout_alignLeft="@+id/radio_group_units"
-        android:layout_marginBottom="30dp"
-        android:layout_marginLeft="10dp"
-        android:text="F"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
-
-    <TextView
-        android:id="@+id/label_C"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/radio_group_units"
-        android:layout_alignRight="@+id/radio_group_units"
-        android:layout_marginBottom="30dp"
-        android:layout_marginRight="10dp"
-        android:text="C"
-        android:textColor="#FFFFFF"
-        android:textSize="25dp" />
+	        android:layout_centerHorizontal="true"
+	        android:src="@drawable/directions2" />
+	     
+		<RadioGroup 
+		    android:id="@+id/radio_group_ref"
+		    android:layout_width="wrap_content"
+		    android:layout_height="wrap_content"
+		    android:orientation="vertical"
+		    android:layout_below="@+id/directions"
+		    android:layout_centerHorizontal="true" >
+		    
+		   <RadioButton
+		        android:id="@+id/radio_button_off"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content" 
+		        android:onClick="onRadioButtonClicked"
+		        android:textColor="#FFFFFF"
+		        android:text="Off"
+		        android:checked="true" />
+		   
+		     <RadioButton
+		        android:id="@+id/radio_button_2f"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:onClick="onRadioButtonClicked"
+		         android:textColor="#FFFFFF"
+		        android:text="+/- 2°F / 1°C"
+		        android:layout_marginTop="10dp" />
+		
+		    <RadioButton
+		        android:id="@+id/radio_button_10f"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:onClick="onRadioButtonClicked"
+		        android:textColor="#FFFFFF"
+		        android:text="+/- 10°F / 5°C"
+		        android:layout_marginTop="10dp" />
+		
+		    <RadioButton
+		        android:id="@+id/radio_button_20f"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:onClick="onRadioButtonClicked"
+		        android:textColor="#FFFFFF"
+		        android:text="+/- 20°F / 10°C"
+		        android:layout_marginTop="10dp" />
+		</RadioGroup>
+    
+    </RelativeLayout>
 
 </RelativeLayout>

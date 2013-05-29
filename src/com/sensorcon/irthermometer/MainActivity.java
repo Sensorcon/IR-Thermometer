@@ -10,12 +10,15 @@ import com.sensorcon.sensordrone.Drone.DroneEventListener;
 import com.sensorcon.sensordrone.Drone.DroneStatusListener;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.graphics.Typeface;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -42,6 +45,10 @@ import android.view.ViewGroup.MarginLayoutParams;
 
 @SuppressLint("NewApi")
 public class MainActivity extends Activity {
+	
+	static String LAST_MAC = "LAST_MAC";
+	static String DISABLE_INTRO = "DISABLE_INTRO";
+	private SharedPreferences preferences;
 	
 	private ImageView lightGreen;
 	private ImageView lightRed;
@@ -89,6 +96,8 @@ public class MainActivity extends Activity {
 	private boolean gEnabled;
 	private boolean bEnabled;
 	
+	public AlertInfo myInfo;
+	
 	private int api;
 	private final int NEW_API = 0;
 	private final int OLD_API = 1;
@@ -109,7 +118,6 @@ public class MainActivity extends Activity {
 	public SDHelper myHelper;
 	
 	private boolean on;
-	private boolean maxHoldOn;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -183,7 +191,6 @@ public class MainActivity extends Activity {
 		maxHoldPressed.setVisibility(View.INVISIBLE);
 		
 		on = false;
-		maxHoldOn = false;
 		
 		lcdFont = Typeface.createFromAsset(this.getAssets(), "DS-DIGI.TTF");	
 		tv_valueRef.setTypeface(lcdFont);
@@ -272,6 +279,11 @@ public class MainActivity extends Activity {
 			}
 		});
 		
+		myInfo = new AlertInfo(this);
+		
+		// Initialize SharedPreferences
+		preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+				
 		// Initialize drone variables
 		myDrone = new Drone();
 		box = new Storage(this);
@@ -313,18 +325,24 @@ public class MainActivity extends Activity {
 		case R.id.connect:
 			scan();
 			break;
+		case R.id.reconnect:
+			if (!myDrone.isConnected) {
+				String prefLastMAC = preferences.getString(LAST_MAC, "");
+				// This option is used to re-connect to the last connected MAC
+				if (!prefLastMAC.equals("")) {
+					if (!myDrone.btConnect(prefLastMAC)) {
+						myInfo.connectFail();
+					}
+				} else {
+					// Notify the user if no previous MAC was found.
+					quickMessage("Last MAC not found... Please scan");
+				} 
+			} else {
+				quickMessage("Already connected...");
+			}
+			break;
 		case R.id.disconnect:
 			doOnDisconnect();
-			break;
-		case R.id.normal_mode:
-			modeChange = true;
-			mode = NORMAL_MODE;
-			modeHandler.post(changeModeRunnable);
-			break;
-		case R.id.advanced_mode:
-			modeChange = true;
-			mode = ADVANCED_MODE;
-			modeHandler.post(changeModeRunnable);
 			break;
 		case R.id.directions:
 			break;
@@ -443,11 +461,13 @@ public class MainActivity extends Activity {
 				tv_valueRef.setVisibility(View.INVISIBLE);
 				tv_valueIr.setVisibility(View.INVISIBLE);
 				labelRef.setVisibility(View.INVISIBLE);
+				labelMax.setVisibility(View.INVISIBLE);
 				labelUnit.setVisibility(View.INVISIBLE);
 				labelScan.setVisibility(View.INVISIBLE);
 				
 				valueIr = 0;
-				valueRef = 0;
+				on = false;
+				maxHold = false;
 				
 				lightGreen.setVisibility(View.INVISIBLE);
 				lightBlue.setVisibility(View.INVISIBLE);
@@ -490,6 +510,17 @@ public class MainActivity extends Activity {
 		});
 	}
 
+	public void rangeErrorMessage() {
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+		alert.setCancelable(false);
+		alert.setTitle("Error").setMessage("Please enter a value in between -273" + (char)0x00B0 + "C (-459.4" + (char)0x00B0 + "F) and 999" + (char)0x00B0 + "C (1830.2" + (char)0x00B0 + "F)");
+		alert.setPositiveButton("Okay", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int which) { 
+		        	getInputVal();
+		        }
+		     }).show();
+	}
+	
 	public void getInputVal() {
 		
 		LayoutInflater li = LayoutInflater.from(this);
@@ -503,10 +534,10 @@ public class MainActivity extends Activity {
 		TextView tv = (TextView)promptView.findViewById(R.id.promptMessage);
 		
 		if(celcius) {
-			tv.setText("Enter Reference Value (C): ");
+			tv.setText("Enter Reference Value (" + (char) 0x00B0 + "C): ");
 		}
 		else {
-			tv.setText("Enter Reference Value (F): ");
+			tv.setText("Enter Reference Value (" + (char) 0x00B0 + "F): ");
 		}
 
 		final EditText userInput = (EditText) promptView.findViewById(R.id.editTextDialogUserInput);
@@ -515,22 +546,45 @@ public class MainActivity extends Activity {
 		alertDialogBuilder.setCancelable(false).setPositiveButton("OK", new DialogInterface.OnClickListener() {
 			    public void onClick(DialogInterface dialog,int id) {
 			    	if(userInput.getText().toString().length() == 0 ) {
+			    		
 			    	}
 			    	else {
-			    		if(!on) {
-			    			if(myDrone.isConnected) {
-			    				on = true;
-			    				
-			    				lightGreen.setVisibility(View.VISIBLE);
-			    				lightOff.setVisibility(View.INVISIBLE);
-			    				
-			    				checkRef = true;
-			    			}
-			    		}
 			    		
-			    		valueRef = Float.valueOf(userInput.getText().toString());
-				    	showRef = true;
-						displayRefHandler.post(displayRefRunnable);
+				    	float userRef = Float.valueOf(userInput.getText().toString());
+				    	boolean error = false;
+				    	
+				    	if(celcius) {
+				    		if((userRef < -273) || (userRef > 999)) {
+				    			rangeErrorMessage();
+				    			error = true;
+				    		}
+				    	}
+				    	else {
+				    		if((userRef < -459.4) || (userRef > 1030.2)) {
+				    			rangeErrorMessage();
+				    			error = true;
+				    		}
+				    	}
+	
+				    	if(error == false) {
+				    		if(!on) {
+				    			if(myDrone.isConnected) {
+				    				on = true;
+				    				
+				    				lightGreen.setVisibility(View.VISIBLE);
+				    				lightOff.setVisibility(View.INVISIBLE);
+				    				
+				    				checkRef = true;
+				    			}
+				    		}
+				    		
+				    		valueRef = userRef;
+					    	showRef = true;
+							displayRefHandler.post(displayRefRunnable);
+				    	}
+				    	else {
+				    		dialog.cancel();
+				    	}
 			    	}
 			    }
 			  })
@@ -561,12 +615,12 @@ public class MainActivity extends Activity {
 		return ret;
 	}
 	
-	public void refToF() {
-		valueRef = (float)(valueRef*1.8) + 32;
+	public float F(float c) {
+		return (float)(c*1.8) + 32;
 	}
 	
-	public void refToC() {
-		valueRef = (valueRef - 32)*(float)(0.555555556);
+	public float C(float f) {
+		return (f - 32)*(float)(0.555555556);
 	}
 	
 	public void onRadioButtonClicked(View view) {
@@ -576,7 +630,7 @@ public class MainActivity extends Activity {
 		switch(view.getId()) {
 		case R.id.radio_button_off:
 			if(checked) {
-				reference = 9999;
+				reference = Float.MAX_VALUE;
 			}
 			break;
 		case R.id.radio_button_2f:
@@ -597,23 +651,23 @@ public class MainActivity extends Activity {
 		case R.id.radio_button_F:
 			if(checked) {
 				if(celcius) {
-					refToF();
+					valueRef = F(valueRef);
 					showRef = true;
 				}
 				
 				celcius = false;
-				max = 0;
+				max = F(max);
 			}
 			break;
 		case R.id.radio_button_C:
 			if(checked) {
 				if(!celcius) {
-					refToC();
+					valueRef = C(valueRef);
 					showRef = true;
 				}
 				
 				celcius = true;
-				max = 0;
+				max = C(max);
 			}
 			break;
 		}
@@ -639,17 +693,13 @@ public class MainActivity extends Activity {
 		@Override
 		public void run() {
 			if(myDrone.isConnected) {
-				if(maxHold) {
-					tv_valueIr.setText(String.format("%.1f", max));
-				}
-				else {
-					tv_valueIr.setText(String.format("%.1f", valueIr));
-				}
 				
+				tv_valueIr.setText(String.format("%.1f", valueIr));
+
 				if(celcius) {
-					labelUnit.setText("C" + (char) 0x00B0);
+					labelUnit.setText((char) 0x00B0 + "C");
 				} else {
-					labelUnit.setText("F" + (char) 0x00B0);
+					labelUnit.setText((char) 0x00B0 + "F");
 				}
 				
 				displayIrHandler.postDelayed(this, 1000);
@@ -753,17 +803,11 @@ public class MainActivity extends Activity {
 					maxHoldReleased.setVisibility(View.INVISIBLE);
 					maxHoldPressed.setVisibility(View.INVISIBLE);
 					
-//					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)iv_directions.getLayoutParams();
-//					params.setMargins(pxToDp(150), pxToDp(340), 0, 0); //substitute parameters for left, top, right, bottom
-//					iv_directions.setLayoutParams(params);
-					
 					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)refLayout.getLayoutParams();
 					params.setMargins(pxToDp(1), pxToDp(0), 0, 0); //substitute parameters for left, top, right, bottom
 					params.removeRule(RelativeLayout.BELOW);
 					params.addRule(RelativeLayout.ALIGN_TOP, R.id.set_ref_released_large);
 					refLayout.setLayoutParams(params);
-					
-					maxHold = false;
 				}
 				else {
 					setRefReleasedLarge.setVisibility(View.INVISIBLE);
@@ -843,6 +887,11 @@ public class MainActivity extends Activity {
 				
 				@Override
 				public void connectEvent(EventObject arg0) {
+					
+
+					Editor prefEditor = preferences.edit();
+					prefEditor.putString(LAST_MAC, myDrone.lastMAC);
+					prefEditor.commit();
 
 					quickMessage("Connected!");
 					
@@ -904,6 +953,10 @@ public class MainActivity extends Activity {
 					
 					if(valueIr > max) {
 						max = valueIr;
+					}
+					
+					if(maxHold) {
+						valueIr = max;
 					}
 					
 					streamer.streamHandler.postDelayed(streamer, 250);

@@ -245,7 +245,7 @@
 		        android:layout_height="wrap_content"
 		     	android:layout_toRightOf="@+id/label_mode"
 		        android:layout_marginLeft="30dp"
-		        android:text="F"
+		        android:text="°F"
 		        android:textColor="#FFFFFF"
 		        android:textSize="25dp" />
 		
@@ -255,8 +255,8 @@
 		        android:layout_height="wrap_content"
 		        android:layout_alignBottom="@+id/label_F"
 		        android:layout_toRightOf="@+id/label_F"
-		        android:layout_marginLeft="28dp"
-		        android:text="C"
+		        android:layout_marginLeft="16dp"
+		        android:text="°C"
 		        android:textColor="#FFFFFF"
 		        android:textSize="25dp" />
 			 
@@ -267,7 +267,7 @@
 			    android:orientation="horizontal"
 			    android:layout_alignLeft="@+id/label_F"
 			    android:layout_below="@+id/label_F"
-			    android:layout_marginLeft="-10dp" >
+			    android:layout_marginLeft="-5dp" >
 			   
 			    <RadioButton
 			        android:id="@+id/radio_button_F"

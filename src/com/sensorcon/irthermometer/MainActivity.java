@@ -19,6 +19,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -283,6 +284,12 @@ public class MainActivity extends Activity {
 		
 		// Initialize SharedPreferences
 		preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+		
+		String disableIntro = preferences.getString(DISABLE_INTRO, "");
+		
+		if(!disableIntro.equals("DISABLE")) {
+			showIntroDialog();
+		}
 				
 		// Initialize drone variables
 		myDrone = new Drone();
@@ -344,11 +351,41 @@ public class MainActivity extends Activity {
 		case R.id.disconnect:
 			doOnDisconnect();
 			break;
-		case R.id.directions:
+		case R.id.instructions:
+			if(api == OLD_API) {
+				Intent myIntent = new Intent(getApplicationContext(), InstructionsActivityOld.class);
+				startActivity(myIntent);
+			}
+			else {
+				Intent myIntent = new Intent(getApplicationContext(), InstructionsActivity.class);
+				startActivity(myIntent);
+			}
 			break;
 		}
 			
 		return true;
+	}
+	
+	/**
+	 * Loads the dialog shown at startup
+	 */
+	public void showIntroDialog() {
+
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+		alert.setCancelable(false);
+		alert.setTitle("Introduction").setMessage("If you are new to the IR Thermometer app, you should read through the instructions. To access them, go to the main menu and select Instructions.");
+		alert.setPositiveButton("Don't Show Again", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int which) { 
+		        	Editor prefEditor = preferences.edit();
+					prefEditor.putString(DISABLE_INTRO, "DISABLE");
+					prefEditor.commit();
+		        }
+		     })
+		    .setNegativeButton("Okay", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int which) { 
+		            // do nothing
+		        }
+		     }).show();
 	}
 	
 	public void refButtonLargePressed() {
@@ -550,8 +587,16 @@ public class MainActivity extends Activity {
 			    	}
 			    	else {
 			    		
-				    	float userRef = Float.valueOf(userInput.getText().toString());
-				    	boolean error = false;
+			    		boolean error = false;
+			    		float userRef = 0;
+			    		
+			    		try {
+			    			userRef = Float.valueOf(userInput.getText().toString());
+			    		}
+			    		catch(NumberFormatException e) {
+			    			error = true;
+			    		}
+				    	
 				    	
 				    	if(celcius) {
 				    		if((userRef < -273) || (userRef > 999)) {
@@ -694,7 +739,12 @@ public class MainActivity extends Activity {
 		public void run() {
 			if(myDrone.isConnected) {
 				
-				tv_valueIr.setText(String.format("%.1f", valueIr));
+				if(maxHold) {
+					tv_valueIr.setText(String.format("%.1f", max));
+				}
+				else {
+					tv_valueIr.setText(String.format("%.1f", valueIr));
+				}
 
 				if(celcius) {
 					labelUnit.setText((char) 0x00B0 + "C");
@@ -804,9 +854,8 @@ public class MainActivity extends Activity {
 					maxHoldPressed.setVisibility(View.INVISIBLE);
 					
 					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)refLayout.getLayoutParams();
-					params.setMargins(pxToDp(1), pxToDp(0), 0, 0); //substitute parameters for left, top, right, bottom
-					params.removeRule(RelativeLayout.BELOW);
-					params.addRule(RelativeLayout.ALIGN_TOP, R.id.set_ref_released_large);
+					params.addRule(RelativeLayout.BELOW, R.id.lcd_layout);
+					params.setMargins(0, pxToDp(10), 0, 0);
 					refLayout.setLayoutParams(params);
 				}
 				else {
@@ -818,13 +867,11 @@ public class MainActivity extends Activity {
 					inputRefReleased.setVisibility(View.VISIBLE);
 					maxHoldReleased.setVisibility(View.VISIBLE);
 					maxHoldPressed.setVisibility(View.INVISIBLE);
-					
+			
 					RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)refLayout.getLayoutParams();
-					params.removeRule(RelativeLayout.ALIGN_TOP);
 					params.addRule(RelativeLayout.BELOW, R.id.max_hold_released);
-					params.setMargins(pxToDp(1), pxToDp(10), 0, 0);
+					params.setMargins(0, pxToDp(10), 0, 0);
 					refLayout.setLayoutParams(params);
-					
 				}
 				modeChange = false;
 			}
@@ -951,12 +998,13 @@ public class MainActivity extends Activity {
 						valueIr = myDrone.irTemperature_Farenheit;
 					}
 					
-					if(valueIr > max) {
-						max = valueIr;
-					}
-					
 					if(maxHold) {
-						valueIr = max;
+						if(valueIr > max) {
+							max = valueIr;
+						}
+					}
+					else {
+						max = 0;
 					}
 					
 					streamer.streamHandler.postDelayed(streamer, 250);

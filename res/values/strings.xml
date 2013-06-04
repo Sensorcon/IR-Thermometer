@@ -4,5 +4,22 @@
     <string name="app_name">Infrared Thermometer</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
-
+    
+    <string name="label1">Menu</string>
+    <string name="label2">Set Reference</string>
+    <string name="label3">Range</string>
+    <string name="label4">Example</string>
+    <string name="label5">Units</string>
+    <string name="label6">Advanced Mode</string>
+    <string name="label7">Input Reference</string>
+    <string name="label8">Max Hold</string>
+    
+    <string name="inst1">To connect, select the Connect menu option and choose your Sensordrone from the list. \n\nSelect the Re-Connect menu option to connect to the device you last used. This will also work after the program is closed. \n\nSelect the Disconnect option to disconnect from your Sensordrone.</string>
+    <string name="inst2">Once connected, the virtual LCD screen on the program will start displaying the infrared temperature being measured by the Sensordrone. As a way of keeping track of temperature changes, you can set a reference temperature by pressing the SET REF button. This will record and display the reference temperature at the moment the button is pressed. From there on, a light at the top, as well as the LEDs on the Sensordrone, will alert you when the temperature changes by a certain amount. The light will change red when the temperature rises, and blue if it falls by the specified amount (which is explained on the next page). If there is no change, it remains green.</string>
+	<string name="inst3">There are three different ranges you can choose to compare the current measured temperature to the set reference. The light will change to red if the current temperature exceeds the reference by the chosen range, and it will turn to blue if the current temperature falls below the reference by the range. If it remains in the range, it stays green.</string>
+	<string name="inst4">Here is a simple example. If the reference is set to 75ºF and the chosen range is 2ºF, the light would turn red if the current temperature exceeds 77ºF and would turn blue if it falls below 73ºF. If it stays between 73ºF and 77ºF, it will remain green. \n\nThis is a good tool to examine for thermal leaks and drafts that may affect your heating/cooling bill. You can choose from 2ºF/1ºC, 10ºF/5ºC, or 20ºF/10ºC as the range.</string>
+	<string name="inst5">You can switch between Fahrenheit and Celsius as measuring units with the radio buttons at the bottom.</string>
+	<string name="inst6">By pressing the Advanced Mode toggle button at the bottom, you can access the more complex features of the program. One extra option in Advanced Mode is to input a reference value rather than using one recorded from the measured temperature. Another option lets you hold the highest temperature you record. These functions will be explained in further detail.</string>
+	<string name="inst7">By pressing the INPUT REF button in Advanced Mode, you can set your own reference rather than using one recorded from the measured temperature. After entering a value and selecting OK, the program will use this temperature as a reference to the measured temperature. Note that you can only enter a value between -273ºC (-459.4ºF) and 999ºC (1830.2ºF).</string>
+	<string name="inst8">By pressing the MAX HOLD button in Advanced Mode, the maximum value that is measured will be held and displayed on the virtual LCD rather than the current value. You will see a MAX label appear on the virtual LCD while it is in this mode. To go back to displaying the current temperature, press the MAX HOLD button again.</string>
 </resources>

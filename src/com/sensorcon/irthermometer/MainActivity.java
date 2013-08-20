@@ -1,48 +1,26 @@
 package com.sensorcon.irthermometer;
 
-import java.util.EventObject;
-
-import com.sensorcon.sdhelper.ConnectionBlinker;
-import com.sensorcon.sdhelper.SDHelper;
-import com.sensorcon.sdhelper.SDStreamer;
-import com.sensorcon.sensordrone.Drone;
-import com.sensorcon.sensordrone.Drone.DroneEventListener;
-import com.sensorcon.sensordrone.Drone.DroneStatusListener;
-import android.os.Bundle;
-import android.os.Handler;
-import android.preference.PreferenceManager;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.content.res.Configuration;
 import android.graphics.Typeface;
+import android.os.Bundle;
+import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
+import android.view.*;
 import android.view.View.OnTouchListener;
-import android.widget.CompoundButton.OnCheckedChangeListener;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.RelativeLayout;
-import android.widget.Switch;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.widget.ToggleButton;
-import android.view.View.OnClickListener;
-import android.widget.CompoundButton;
-import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.*;
+import com.sensorcon.sensordrone.DroneEventListener;
+import com.sensorcon.sensordrone.DroneEventObject;
+import com.sensorcon.sensordrone.DroneStatusListener;
+import com.sensorcon.sensordrone.android.Drone;
+import com.sensorcon.sensordrone.android.tools.DroneConnectionHelper;
+import com.sensorcon.sensordrone.android.tools.DroneQSStreamer;
 
 @SuppressLint("NewApi")
 public class MainActivity extends Activity {
@@ -115,11 +93,28 @@ public class MainActivity extends Activity {
 	private Typeface lcdFont;
 
 	protected Drone myDrone;
-	public Storage box;
-	public SDHelper myHelper;
+	public DroneConnectionHelper myHelper;
 	
 	private boolean on;
-	
+
+
+
+    // Holds the sensor of interest - the CO precision sensor
+    public int sensor;
+
+    // Our Listeners
+    public DroneEventListener droneEventListener;
+    public DroneStatusListener droneStatusListener;
+    public String MAC = "";
+
+    // GUI variables
+    public TextView statusView;
+    public TextView tvConnectionStatus;
+    public TextView tvConnectInfo;
+
+    // Streams data from sensor
+    public DroneQSStreamer streamer;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -293,8 +288,179 @@ public class MainActivity extends Activity {
 				
 		// Initialize drone variables
 		myDrone = new Drone();
-		box = new Storage(this);
-		myHelper = new SDHelper();
+		myHelper = new DroneConnectionHelper();
+
+        // Initialize sensor
+        sensor = myDrone.QS_TYPE_IR_TEMPERATURE;
+
+
+
+        streamer = new DroneQSStreamer(myDrone, sensor);
+			
+			/*
+			 * Let's set up our Drone Event Listener.
+			 * 
+			 * See adcMeasured for the general flow for when a sensor is measured.
+			 * 
+			 */
+        droneEventListener = new DroneEventListener() {
+
+            @Override
+            public void connectEvent(DroneEventObject arg0) {
+
+
+                Editor prefEditor = preferences.edit();
+                prefEditor.putString(LAST_MAC, myDrone.lastMAC);
+                prefEditor.commit();
+
+                quickMessage("Connected!");
+
+                streamer.enable();
+                myDrone.quickEnable(sensor);
+
+                myDrone.setLEDs(0,126,0);
+
+                tv_valueRef.setVisibility(View.VISIBLE);
+                tv_valueIr.setVisibility(View.VISIBLE);
+                labelRef.setVisibility(View.VISIBLE);
+                labelUnit.setVisibility(View.VISIBLE);
+                labelScan.setVisibility(View.VISIBLE);
+
+                displayIrHandler.post(displayIRRunnable);
+            }
+
+
+            @Override
+            public void connectionLostEvent(DroneEventObject arg0) {
+
+
+                quickMessage("Connection lost! Trying to re-connect!");
+
+                // Try to reconnect once, automatically
+                if (myDrone.btConnect(myDrone.lastMAC)) {
+                    // A brief pause
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                } else {
+                    quickMessage("Re-connect failed");
+                    doOnDisconnect();
+                }
+            }
+
+            @Override
+            public void disconnectEvent(DroneEventObject arg0) {
+                quickMessage("Disconnected!");
+            }
+
+            @Override
+            public void irTemperatureMeasured(DroneEventObject arg0) {
+                if(celcius) {
+                    valueIr = myDrone.irTemperature_Celsius;
+                } else {
+                    valueIr = myDrone.irTemperature_Fahrenheit;
+                }
+
+                if(maxHold) {
+                    if(valueIr > max) {
+                        max = valueIr;
+                    }
+                }
+                else {
+                    max = 0;
+                }
+
+                streamer.streamHandler.postDelayed(streamer, 250);
+            }
+
+            /*
+             * Unused events
+             */
+            @Override
+            public void precisionGasMeasured(DroneEventObject arg0) {}
+            @Override
+            public void customEvent(DroneEventObject arg0) {}
+            @Override
+            public void adcMeasured(DroneEventObject arg0) {}
+            @Override
+            public void altitudeMeasured(DroneEventObject arg0) {}
+            @Override
+            public void capacitanceMeasured(DroneEventObject arg0) {}
+            @Override
+            public void humidityMeasured(DroneEventObject arg0) {}
+            @Override
+            public void i2cRead(DroneEventObject arg0) {}
+            @Override
+            public void oxidizingGasMeasured(DroneEventObject arg0) {}
+            @Override
+            public void pressureMeasured(DroneEventObject arg0) {}
+            @Override
+            public void reducingGasMeasured(DroneEventObject arg0) {}
+            @Override
+            public void rgbcMeasured(DroneEventObject arg0) {}
+            @Override
+            public void temperatureMeasured(DroneEventObject arg0) {}
+            @Override
+            public void uartRead(DroneEventObject arg0) {}
+            @Override
+            public void unknown(DroneEventObject arg0) {}
+            @Override
+            public void usbUartRead(DroneEventObject arg0) {}
+        };
+			
+			/*
+			 * Set up our status listener
+			 * 
+			 * see adcStatus for the general flow for sensors.
+			 */
+        droneStatusListener = new DroneStatusListener() {
+
+            @Override
+            public void irStatus(DroneEventObject arg0) {
+                streamer.run();
+            }
+
+            /*
+             * Unused statuses
+             */
+            @Override
+            public void precisionGasStatus(DroneEventObject arg0) {}
+            @Override
+            public void adcStatus(DroneEventObject arg0) {}
+            @Override
+            public void altitudeStatus(DroneEventObject arg0) {}
+            @Override
+            public void batteryVoltageStatus(DroneEventObject arg0) {}
+            @Override
+            public void capacitanceStatus(DroneEventObject arg0) {}
+            @Override
+            public void chargingStatus(DroneEventObject arg0) {}
+            @Override
+            public void customStatus(DroneEventObject arg0) {}
+            @Override
+            public void humidityStatus(DroneEventObject arg0) {}
+            @Override
+            public void lowBatteryStatus(DroneEventObject arg0) {}
+            @Override
+            public void oxidizingGasStatus(DroneEventObject arg0) {}
+            @Override
+            public void pressureStatus(DroneEventObject arg0) {}
+            @Override
+            public void reducingGasStatus(DroneEventObject arg0) {}
+            @Override
+            public void rgbcStatus(DroneEventObject arg0) {}
+            @Override
+            public void temperatureStatus(DroneEventObject arg0) {}
+            @Override
+            public void unknownStatus(DroneEventObject arg0) {}
+        };
+
+        // Register the listeners
+        myDrone.registerDroneEventListener(droneEventListener);
+        myDrone.registerDroneStatusListener(droneStatusListener);
 	}
 	
 	@Override
@@ -311,8 +477,8 @@ public class MainActivity extends Activity {
 				e.printStackTrace();
 			}
 			// Unregister the listener
-			myDrone.unregisterDroneEventListener(box.droneEventListener);
-			myDrone.unregisterDroneStatusListener(box.droneStatusListener);
+			myDrone.unregisterDroneEventListener(droneEventListener);
+			myDrone.unregisterDroneStatusListener(droneStatusListener);
 
 		} else { 
 			//It's an orientation change.
@@ -510,11 +676,7 @@ public class MainActivity extends Activity {
 				lightBlue.setVisibility(View.INVISIBLE);
 				lightRed.setVisibility(View.INVISIBLE);
 				lightOff.setVisibility(View.VISIBLE);
-				
-				// Turn off myBlinker
-				box.myBlinkerR.disable();
-				box.myBlinkerG.disable();
-				box.myBlinkerB.disable();
+
 				
 				// Make sure the LEDs go off
 				if (myDrone.isConnected) {
@@ -785,11 +947,8 @@ public class MainActivity extends Activity {
 							bEnabled = true;
 							rEnabled = false;
 							gEnabled = false;
-							
-							box.myBlinkerR.disable();
-							box.myBlinkerG.disable();
-							box.myBlinkerB.enable();
-							box.myBlinkerB.run();
+
+                            myDrone.setLEDs(0,0,126);
 						}
 					}
 					else if((valueIr - reference) > valueRef) {
@@ -801,11 +960,8 @@ public class MainActivity extends Activity {
 							rEnabled = true;
 							bEnabled = false;
 							gEnabled = false;
-							
-							box.myBlinkerB.disable();
-							box.myBlinkerG.disable();
-							box.myBlinkerR.enable();
-							box.myBlinkerR.run();
+
+                            myDrone.setLEDs(126,0,0);
 						}
 					}
 					else {
@@ -817,11 +973,8 @@ public class MainActivity extends Activity {
 							gEnabled = true;
 							bEnabled = false;
 							rEnabled = false;
-							
-							box.myBlinkerR.disable();
-							box.myBlinkerB.disable();
-							box.myBlinkerG.enable();
-							box.myBlinkerG.run();
+
+                            myDrone.setLEDs(0,126,0);
 						}
 					}
 				}
@@ -878,223 +1031,5 @@ public class MainActivity extends Activity {
 		}
 	};
 	
-	/*
-	 * Because Android will destroy and re-create things on events like orientation changes,
-	 * we will need a way to store our objects and return them in such a case. 
-	 * 
-	 * A simple and straightforward way to do this is to create a class which has all of the objects
-	 * and values we want don't want to get lost. When our orientation changes, it will reload our
-	 * class, and everything will behave as normal! See onRetainNonConfigurationInstance in the code
-	 * below for more information.
-	 * 
-	 * A lot of the GUI set up will be here, and initialized via the Constructor
-	 */
-	public final class Storage {
-		
-		// A ConnectionBLinker from the SDHelper Library
-		public ConnectionBlinker myBlinkerR;
-		public ConnectionBlinker myBlinkerG;
-		public ConnectionBlinker myBlinkerB;
-		
-		// Holds the sensor of interest - the CO precision sensor
-		public int sensor;
-		
-		// Our Listeners
-		public DroneEventListener droneEventListener;
-		public DroneStatusListener droneStatusListener;
-		public String MAC = "";
-		
-		// GUI variables
-		public TextView statusView;
-		public TextView tvConnectionStatus;
-		public TextView tvConnectInfo;
-		
-		// Streams data from sensor
-		public SDStreamer streamer;
-		
-		public Storage(Context context) {
-			
-			// Initialize sensor
-			sensor = myDrone.QS_TYPE_IR_TEMPERATURE;
-			
-			// This will Blink our Drone, once a second, Blue
-			myBlinkerR = new ConnectionBlinker(myDrone, 1000, 255, 0, 0);
-			myBlinkerG = new ConnectionBlinker(myDrone, 1000, 0, 255, 0);
-			myBlinkerB = new ConnectionBlinker(myDrone, 1000, 0, 0, 255);
-			
-			streamer = new SDStreamer(myDrone, sensor);
-			
-			/*
-			 * Let's set up our Drone Event Listener.
-			 * 
-			 * See adcMeasured for the general flow for when a sensor is measured.
-			 * 
-			 */
-			droneEventListener = new DroneEventListener() {
-				
-				@Override
-				public void connectEvent(EventObject arg0) {
-					
 
-					Editor prefEditor = preferences.edit();
-					prefEditor.putString(LAST_MAC, myDrone.lastMAC);
-					prefEditor.commit();
-
-					quickMessage("Connected!");
-					
-					streamer.enable();
-					myDrone.quickEnable(sensor);
-					
-					// Flash teh LEDs green
-					myHelper.flashLEDs(myDrone, 3, 100, 0, 0, 22);
-					// Turn on our blinker
-					myBlinkerG.enable();
-					myBlinkerG.run();
-					
-					tv_valueRef.setVisibility(View.VISIBLE);
-					tv_valueIr.setVisibility(View.VISIBLE);
-					labelRef.setVisibility(View.VISIBLE);
-					labelUnit.setVisibility(View.VISIBLE);
-					labelScan.setVisibility(View.VISIBLE);
-					
-					displayIrHandler.post(displayIRRunnable);
-				}
-
-				
-				@Override
-				public void connectionLostEvent(EventObject arg0) {
-					// Turn off the blinker
-					myBlinkerR.disable();
-					myBlinkerG.disable();
-					myBlinkerB.disable();
-					
-					quickMessage("Connection lost! Trying to re-connect!");
-
-					// Try to reconnect once, automatically
-					if (myDrone.btConnect(myDrone.lastMAC)) {
-						// A brief pause
-						try {
-							Thread.sleep(500);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-						
-					} else {
-						quickMessage("Re-connect failed");
-						doOnDisconnect();
-					}
-				}
-
-				@Override
-				public void disconnectEvent(EventObject arg0) {
-					quickMessage("Disconnected!");
-				}
-
-				@Override
-				public void irTemperatureMeasured(EventObject arg0) {
-					if(celcius) {
-						valueIr = myDrone.irTemperature_Celcius;
-					} else {
-						valueIr = myDrone.irTemperature_Farenheit;
-					}
-					
-					if(maxHold) {
-						if(valueIr > max) {
-							max = valueIr;
-						}
-					}
-					else {
-						max = 0;
-					}
-					
-					streamer.streamHandler.postDelayed(streamer, 250);
-				}
-				
-				/*
-				 * Unused events
-				 */
-				@Override
-				public void precisionGasMeasured(EventObject arg0) {}
-				@Override
-				public void customEvent(EventObject arg0) {}
-				@Override
-				public void adcMeasured(EventObject arg0) {}
-				@Override
-				public void altitudeMeasured(EventObject arg0) {}
-				@Override
-				public void capacitanceMeasured(EventObject arg0) {}
-				@Override
-				public void humidityMeasured(EventObject arg0) {}
-				@Override
-				public void i2cRead(EventObject arg0) {}
-				@Override
-				public void oxidizingGasMeasured(EventObject arg0) {}
-				@Override
-				public void pressureMeasured(EventObject arg0) {}
-				@Override
-				public void reducingGasMeasured(EventObject arg0) {}
-				@Override
-				public void rgbcMeasured(EventObject arg0) {}
-				@Override
-				public void temperatureMeasured(EventObject arg0) {}
-				@Override
-				public void uartRead(EventObject arg0) {}
-				@Override
-				public void unknown(EventObject arg0) {}
-				@Override
-				public void usbUartRead(EventObject arg0) {}
-			};
-			
-			/*
-			 * Set up our status listener
-			 * 
-			 * see adcStatus for the general flow for sensors.
-			 */
-			droneStatusListener = new DroneStatusListener() {
-
-				@Override
-				public void irStatus(EventObject arg0) {
-					streamer.run();
-				}
-				
-				/*
-				 * Unused statuses
-				 */
-				@Override
-				public void precisionGasStatus(EventObject arg0) {}
-				@Override
-				public void adcStatus(EventObject arg0) {}
-				@Override
-				public void altitudeStatus(EventObject arg0) {}
-				@Override
-				public void batteryVoltageStatus(EventObject arg0) {}
-				@Override
-				public void capacitanceStatus(EventObject arg0) {}
-				@Override
-				public void chargingStatus(EventObject arg0) {}
-				@Override
-				public void customStatus(EventObject arg0) {}
-				@Override
-				public void humidityStatus(EventObject arg0) {}
-				@Override
-				public void lowBatteryStatus(EventObject arg0) {}
-				@Override
-				public void oxidizingGasStatus(EventObject arg0) {}
-				@Override
-				public void pressureStatus(EventObject arg0) {}
-				@Override
-				public void reducingGasStatus(EventObject arg0) {}
-				@Override
-				public void rgbcStatus(EventObject arg0) {}
-				@Override
-				public void temperatureStatus(EventObject arg0) {}
-				@Override
-				public void unknownStatus(EventObject arg0) {}
-			};
-			
-			// Register the listeners
-			myDrone.registerDroneEventListener(droneEventListener);
-			myDrone.registerDroneStatusListener(droneStatusListener);
-		}
-	}
 }
